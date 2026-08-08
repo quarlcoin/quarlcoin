@@ -43,7 +43,12 @@ NO_USDT ?=
 # Default NO_IPC value is 1 on Windows
 NO_IPC ?= $(if $(findstring mingw32,$(HOST)),1,)
 LTO ?=
-FALLBACK_DOWNLOAD_PATH ?= https://quarlcoincore.org/depends-sources
+# Upstream's mirror of these exact tarballs. The rename that gave this tree its
+# own name rewrote this host too, into one that does not exist; it is restored
+# because it is the fallback that actually serves the files. Nothing is trusted
+# to it -- every download is checked against the hash in the package's .mk, so
+# the mirror can only fail loudly, never substitute.
+FALLBACK_DOWNLOAD_PATH ?= https://bitcoincore.org/depends-sources
 
 C_STANDARD ?= c11
 CXX_STANDARD ?= c++20

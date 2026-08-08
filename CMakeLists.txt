@@ -24,7 +24,15 @@ project(quarlcoin
 # GenerateBuildInfo script).
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_SOURCE_DIR}/cmake/module)
 
-set(CMAKE_CXX_STANDARD 26)
+# C++26 by default, and overridable because not every toolchain that should be
+# able to build this has it. The tree does not depend on anything newer than
+# C++23 -- the whole of it compiles under 23 -- so a cross build with an older
+# compiler passes -DCMAKE_CXX_STANDARD=23 and loses nothing. Setting it here
+# unconditionally would silently ignore that flag, which is how a Windows build
+# fails with a message about a dialect nobody asked for.
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 26)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)

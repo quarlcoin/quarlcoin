@@ -21,7 +21,7 @@ darwin_STRIP=$(shell command -v llvm-strip)
 #     -mlinker-version
 #
 #         Ensures that modern linker features are enabled. See here for more
-#         details: https://github.com/quarlcoin/quarlcoin/pull/19407.
+#         details: https://github.com/bitcoin/bitcoin/pull/19407.
 #
 #     -isysroot$(OSX_SDK) -nostdlibinc
 #

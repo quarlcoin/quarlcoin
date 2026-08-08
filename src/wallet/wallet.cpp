@@ -3550,7 +3550,11 @@ bool CWallet::HaveCryptedKeys() const
 void CWallet::ConnectScriptPubKeyManNotifiers()
 {
     for (const auto& spk_man : GetActiveScriptPubKeyMans()) {
-        spk_man->NotifyCanGetAddressesChanged.connect(NotifyCanGetAddressesChanged);
+        // Forwarded through a lambda rather than connected signal-to-signal.
+        // boost::signals2 allowed one signal to be a slot of another; btcsignals
+        // stores slots in std::function and a signal is not copyable, so the
+        // forwarding is written out.
+        spk_man->NotifyCanGetAddressesChanged.connect([this] { NotifyCanGetAddressesChanged(); });
         spk_man->NotifyFirstKeyTimeChanged.connect([this](const ScriptPubKeyMan*, int64_t time) {
             MaybeUpdateBirthTime(time);
         });

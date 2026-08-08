@@ -59,13 +59,59 @@
 #include <thread>
 #include <vector>
 
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+// The sockets come through compat/compat.h, which is already included above:
+// on Windows it pulls Winsock and on everything else the POSIX headers, and it
+// defines SOCKET, INVALID_SOCKET and CloseSocket so that the code below does not
+// have to know which platform it is on. Including netinet/in.h directly is what
+// made this file the one thing in the tree that would not cross-compile.
 
 const TranslateFn G_TRANSLATION_FUN{nullptr};
+
+namespace {
+/** The three socket calls that differ between Windows and everything else.
+ *
+ *  compat/compat.h already gives the types and the headers; what it does not
+ *  give is a way to close a socket or to send on one without knowing which
+ *  platform is underneath. Winsock wants closesocket() and a char* buffer,
+ *  POSIX wants close() and void*, and neither knows about the other. Three
+ *  lines here are cheaper than an #ifdef at each of the five call sites.
+ */
+inline void CloseSock(SOCKET s)
+{
+#ifdef WIN32
+    ::closesocket(s);
+#else
+    ::close(s);
+#endif
+}
+
+inline int SendAll(SOCKET s, const char* buf, size_t len)
+{
+    for (size_t sent = 0; sent < len;) {
+        const auto n = ::send(s, buf + sent, static_cast<int>(len - sent), 0);
+        if (n <= 0) return -1;
+        sent += static_cast<size_t>(n);
+    }
+    return 0;
+}
+
+/** Winsock needs starting once per process; POSIX needs nothing. */
+struct SocketsUp {
+    SocketsUp()
+    {
+#ifdef WIN32
+        WSADATA d;
+        WSAStartup(MAKEWORD(2, 2), &d);
+#endif
+    }
+    ~SocketsUp()
+    {
+#ifdef WIN32
+        WSACleanup();
+#endif
+    }
+};
+} // namespace
 
 namespace {
 
@@ -75,6 +121,7 @@ void SetupMinerArgs(ArgsManager& argsman)
 {
     SetupHelpOptions(argsman);
     SetupChainParamsBaseOptions(argsman);
+    argsman.AddArg("-version", "Print version and exit", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-datadir=<dir>", "Data directory of the node -- where its cookie is read from",
                    ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-address=<addr>", "Address to pay the block reward to. Required.",
@@ -118,36 +165,35 @@ public:
             "Content-Length: " + util::ToString(body.size()) + "\r\n"
             "Connection: close\r\n\r\n";
 
-        const int fd{socket(AF_INET, SOCK_STREAM, 0)};
-        if (fd < 0) throw std::runtime_error("socket() failed");
+        const SOCKET fd{socket(AF_INET, SOCK_STREAM, 0)};
+        if (fd == INVALID_SOCKET) throw std::runtime_error("socket() failed");
 
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
         addr.sin_port = htons(m_port);
         if (inet_pton(AF_INET, m_host.c_str(), &addr.sin_addr) != 1) {
-            close(fd);
+            CloseSock(fd);
             throw std::runtime_error("-rpcconnect must be an IPv4 address");
         }
         if (connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof addr) != 0) {
-            close(fd);
+            CloseSock(fd);
             throw std::runtime_error("cannot reach the node -- is it running, and is -rpcport right?");
         }
 
         const std::string out{head + body};
-        for (size_t sent = 0; sent < out.size();) {
-            const ssize_t n{send(fd, out.data() + sent, out.size() - sent, 0)};
-            if (n <= 0) { close(fd); throw std::runtime_error("send() failed"); }
-            sent += static_cast<size_t>(n);
+        if (SendAll(fd, out.data(), out.size()) != 0) {
+            CloseSock(fd);
+            throw std::runtime_error("send() failed");
         }
 
         std::string resp;
         char buf[8192];
         for (;;) {
-            const ssize_t n{recv(fd, buf, sizeof buf, 0)};
+            const auto n = ::recv(fd, buf, static_cast<int>(sizeof buf), 0);
             if (n <= 0) break;
             resp.append(buf, static_cast<size_t>(n));
         }
-        close(fd);
+        CloseSock(fd);
 
         const size_t split{resp.find("\r\n\r\n")};
         if (split == std::string::npos) throw std::runtime_error("malformed HTTP response");
@@ -372,6 +418,8 @@ int Mine(const ArgsManager& args)
 
 int main(int argc, char* argv[])
 {
+    SocketsUp sockets;
+
     ArgsManager args;
     SetupMinerArgs(args);
     std::string error;

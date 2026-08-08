@@ -57,7 +57,7 @@
 #include <node/context.h>
 #include <node/interface_ui.h>
 
-#include <boost/signals2/connection.hpp>
+#include <util/btcsignals.h>
 #include <node/kernel_notifications.h>
 #include <node/mempool_args.h>
 #include <node/mempool_persist.h>
@@ -85,7 +85,6 @@
 #include <uint256.h>
 #include <util/asmap.h>
 #include <util/batchpriority.h>
-#include <util/btcsignals.h>
 #include <util/chaintype.h>
 #include <util/check.h>
 #include <util/fs.h>

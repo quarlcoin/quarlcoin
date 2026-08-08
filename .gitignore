@@ -31,3 +31,8 @@ __pycache__/
 # constraint-analysis engine for SHA-256 differential characteristics. It has
 # nothing to do with the chain and is not published with it.
 cas-sha256/
+
+# Built archives. They are attached to a GitHub release rather than committed:
+# a binary in the history is a binary nobody can review and everybody must
+# clone.
+/release/

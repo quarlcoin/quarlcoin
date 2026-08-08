@@ -36,7 +36,7 @@
 #include <util/translation.h>
 #include <validation.h>
 
-#include <boost/signals2/connection.hpp>
+#include <util/btcsignals.h>
 
 #ifdef ENABLE_WALLET
 #include <qt/paymentserver.h>
@@ -485,9 +485,9 @@ int GuiMain(int argc, char* argv[])
     util::ThreadSetInternalName("main");
 
     // Subscribe to global signals from core
-    boost::signals2::scoped_connection handler_message_box{::uiInterface.ThreadSafeMessageBox_connect(noui_ThreadSafeMessageBox)};
-    boost::signals2::scoped_connection handler_question{::uiInterface.ThreadSafeQuestion_connect(noui_ThreadSafeQuestion)};
-    boost::signals2::scoped_connection handler_init_message{::uiInterface.InitMessage_connect(noui_InitMessage)};
+    btcsignals::scoped_connection handler_message_box{::uiInterface.ThreadSafeMessageBox_connect(noui_ThreadSafeMessageBox)};
+    btcsignals::scoped_connection handler_question{::uiInterface.ThreadSafeQuestion_connect(noui_ThreadSafeQuestion)};
+    btcsignals::scoped_connection handler_init_message{::uiInterface.InitMessage_connect(noui_InitMessage)};
 
     // Do not refer to data directory yet, this can be overridden by Intro::pickDataDirectory
 
