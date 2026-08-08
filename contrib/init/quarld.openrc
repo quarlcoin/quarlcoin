@@ -1,0 +1,93 @@
+#!/sbin/openrc-run
+
+# backward compatibility for existing gentoo layout
+#
+if [ -d "/var/lib/quarlcoin/.quarlcoin" ]; then
+	QUARLD_DEFAULT_DATADIR="/var/lib/quarlcoin/.quarlcoin"
+else
+	QUARLD_DEFAULT_DATADIR="/var/lib/quarld"
+fi
+
+QUARLD_CONFIGFILE=${QUARLD_CONFIGFILE:-/etc/quarlcoin/quarlcoin.conf}
+QUARLD_PIDDIR=${QUARLD_PIDDIR:-/var/run/quarld}
+QUARLD_PIDFILE=${QUARLD_PIDFILE:-${QUARLD_PIDDIR}/quarld.pid}
+QUARLD_DATADIR=${QUARLD_DATADIR:-${QUARLD_DEFAULT_DATADIR}}
+QUARLD_USER=${QUARLD_USER:-${QUARLCOIN_USER:-quarlcoin}}
+QUARLD_GROUP=${QUARLD_GROUP:-quarlcoin}
+QUARLD_BIN=${QUARLD_BIN:-/usr/bin/quarld}
+QUARLD_NICE=${QUARLD_NICE:-${NICELEVEL:-0}}
+QUARLD_OPTS="${QUARLD_OPTS:-${QUARLCOIN_OPTS}}"
+
+name="Quarlcoin Core Daemon"
+description="Quarlcoin cryptocurrency P2P network daemon"
+
+command="/usr/bin/quarld"
+command_args="-pid=\"${QUARLD_PIDFILE}\" \
+		-conf=\"${QUARLD_CONFIGFILE}\" \
+		-datadir=\"${QUARLD_DATADIR}\" \
+		-daemon \
+		${QUARLD_OPTS}"
+
+required_files="${QUARLD_CONFIGFILE}"
+start_stop_daemon_args="-u ${QUARLD_USER} \
+			-N ${QUARLD_NICE} -w 2000"
+pidfile="${QUARLD_PIDFILE}"
+
+# The retry schedule to use when stopping the daemon. Could be either
+# a timeout in seconds or multiple signal/timeout pairs (like
+# "SIGKILL/180 SIGTERM/300")
+retry="${QUARLD_SIGTERM_TIMEOUT}"
+
+depend() {
+	need localmount net
+}
+
+# verify
+# 1) that the datadir exists and is writable (or create it)
+# 2) that a directory for the pid exists and is writable
+# 3) ownership and permissions on the config file
+start_pre() {
+	checkpath \
+	-d \
+	--mode 0750 \
+	--owner "${QUARLD_USER}:${QUARLD_GROUP}" \
+	"${QUARLD_DATADIR}"
+
+	checkpath \
+	-d \
+	--mode 0755 \
+	--owner "${QUARLD_USER}:${QUARLD_GROUP}" \
+	"${QUARLD_PIDDIR}"
+
+	checkpath -f \
+	-o "${QUARLD_USER}:${QUARLD_GROUP}" \
+	-m 0660 \
+	"${QUARLD_CONFIGFILE}"
+
+	checkconfig || return 1
+}
+
+checkconfig()
+{
+	if grep -qs '^rpcuser=' "${QUARLD_CONFIGFILE}" && \
+		! grep -qs '^rpcpassword=' "${QUARLD_CONFIGFILE}" ; then
+		eerror ""
+		eerror "ERROR: You must set a secure rpcpassword to run quarld."
+		eerror "The setting must appear in ${QUARLD_CONFIGFILE}"
+		eerror ""
+		eerror "This password is security critical to securing wallets "
+		eerror "and must not be the same as the rpcuser setting."
+		eerror "You can generate a suitable random password using the following "
+		eerror "command from the shell:"
+		eerror ""
+		eerror "bash -c 'tr -dc a-zA-Z0-9 < /dev/urandom | head -c32 && echo'"
+		eerror ""
+		eerror "It is recommended that you also set alertnotify so you are "
+		eerror "notified of problems:"
+		eerror ""
+		eerror "ie: alertnotify=echo %%s | mail -s \"Quarlcoin Alert\"" \
+			"admin@foo.com"
+		eerror ""
+		return 1
+	fi
+}

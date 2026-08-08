@@ -1,0 +1,33 @@
+# Build trees
+/build/
+build/
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Compiled output
+*.o
+*.obj
+*.a
+*.exe
+
+# Precompiled headers (e.g. left by tools running g++ -fsyntax-only)
+*.gch
+
+# Windows installer staging + GUI build dir (build artifacts)
+/dist/
+/build-*/
+__pycache__/
+*.pyc
+
+# Editor / agent tooling — not part of the repo
+.claude/
+.vscode/
+
+# A separate piece of work that happens to live in this checkout: a
+# constraint-analysis engine for SHA-256 differential characteristics. It has
+# nothing to do with the chain and is not published with it.
+cas-sha256/

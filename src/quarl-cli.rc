@@ -1,0 +1,10 @@
+// Copyright (c) 2026 The Quarlcoin developers
+// See COPYING for license.
+//
+// Embed the application manifest so Windows runs quarl-cli with a UTF-8 active
+// code page (SetupEnvironment() asserts GetACP() == CP_UTF8). Shares the same
+// manifest as quarld.
+
+#include <winuser.h> // for CREATEPROCESS_MANIFEST_RESOURCE_ID and RT_MANIFEST
+
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "quarld.manifest"

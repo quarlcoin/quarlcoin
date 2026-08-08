@@ -1,0 +1,29 @@
+BLAKE3, carried as a subtree.
+
+    https://github.com/BLAKE3-team/BLAKE3
+    77b257eee7da5cd608eaf6be8343d3a4c9776af2, 2026-08-05
+
+What is here is the contents of the upstream `c/` directory, unmodified, minus
+two things: the hand-written assembly (blake3_*_x86-64_*.S and .asm) and the
+upstream CMake files.
+
+The assembly is left out on purpose. Upstream offers two ways to get the same
+SIMD kernels -- assembly, or C with intrinsics -- and they compute the same
+function. The C ones build with one toolchain rule per file, the same rule this
+tree already uses for the SHA-256 kernels next door, and they cross-compile
+without a second assembler in the mix. What that costs is a few percent on
+large inputs. A block header is 80 bytes and a transaction is rarely more than
+a few hundred, so the single-block path is what this chain actually runs, and
+the assembly does not touch it.
+
+AVX-512 is compiled out (BLAKE3_NO_AVX512). The tree probes for SSE4.1 and AVX2
+and has no probe for AVX-512, and adding a code path nothing here can test is
+worse than not having it. blake3_avx512.c is carried anyway so that turning it
+on later is a build-system change and not another import.
+
+Consensus note: every node must agree on the hash of a block, so the answer
+this library gives cannot depend on which kernel the dispatcher picked. It does
+not -- the SIMD paths are the same function, and blake3_dispatch.c chooses
+between them by CPUID at runtime. test/test_blake3 checks the official vectors,
+and checks them again with the dispatcher forced down to the portable path, so
+that claim is tested rather than assumed.
