@@ -253,6 +253,18 @@ if(ENABLE_HARDENING)
     try_append_linker_flag("-Wl,-z,relro" TARGET core_interface)
     try_append_linker_flag("-Wl,-z,now" TARGET core_interface)
     try_append_linker_flag("-Wl,-z,separate-code" TARGET core_interface)
+
+    if(MINGW)
+        # Link the compiler runtime into the executable rather than importing
+        # it. Without this every binary carries an import of libstdc++-6.dll,
+        # libgcc_s_seh-1.dll, libwinpthread-1.dll and libssp-0.dll -- four
+        # files that exist on the machine that did the cross-compile and on
+        # almost no Windows machine that downloads the result. The failure is
+        # not a diagnosable one either: Windows refuses to start the process
+        # and names a DLL the user has never heard of, before any of our code
+        # runs and before anything reaches a log.
+        try_append_linker_flag("-static" TARGET core_interface)
+    endif()
 endif()
 
 enable_testing()
